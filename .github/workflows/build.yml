@@ -1,0 +1,90 @@
+name: build
+
+on:
+  push:
+    branches: [ "dev", "release" ]
+  pull_request:
+    branches: [ "release" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build_type: [Release]
+        c_compiler: [gcc, clang, cl]
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++-14
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+          - os: macos-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+        exclude:
+          - os: windows-latest
+            c_compiler: gcc
+          - os: windows-latest
+            c_compiler: clang
+          - os: ubuntu-latest
+            c_compiler: cl
+          - os: macos-latest
+            c_compiler: gcc
+          - os: macos-latest
+            c_compiler: cl
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DTPZ_WARNINGS_AS_ERRORS=ON
+        -DTPZ_BUILD_EXAMPLES=OFF
+        -S ${{ github.workspace }}
+
+    - name: Build
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --parallel
+
+  sanitizers:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ github.workspace }}/build-debug
+        -DCMAKE_CXX_COMPILER=g++-14
+        -DCMAKE_C_COMPILER=gcc-14
+        -DCMAKE_BUILD_TYPE=Debug
+        -DTPZ_ENABLE_SANITIZERS=ON
+        -DTPZ_WARNINGS_AS_ERRORS=ON
+        -DTPZ_BUILD_EXAMPLES=OFF
+        -DTPZ_BUILD_BENCH=OFF
+        -S ${{ github.workspace }}
+
+    - name: Build
+      run: cmake --build ${{ github.workspace }}/build-debug --parallel
+
+    - name: Test
+      run: ctest --test-dir ${{ github.workspace }}/build-debug --output-on-failure
