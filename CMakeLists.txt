@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# CMakePresets
+# ---------------------------------------------------------------------------
+# cmake --preset release          | configure
+# cmake --build --preset release  | build
+# ctest --preset release          | test
+# cmake --workflow --preset test  | configure, build and test in one command
+
 cmake_minimum_required(VERSION 3.25)
 
 project(topaz
