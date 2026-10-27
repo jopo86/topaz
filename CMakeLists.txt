@@ -5,7 +5,12 @@
 # cmake --build --preset release  | build
 # ctest --preset release          | test
 # cmake --workflow --preset test  | configure, build and test in one command
-
+#
+# Debug + sanitizers (ASan, plus UBSan on GCC/Clang), built in build-debug/:
+# cmake --preset debug-asan             | configure
+# cmake --build --preset debug-asan     | build
+# ctest --preset debug-asan             | test
+# cmake --workflow --preset test-asan   | configure, build and test in one command
 cmake_minimum_required(VERSION 3.25)
 
 project(topaz
@@ -20,7 +25,7 @@ project(topaz
 option(TPZ_BUILD_EXAMPLES     "Build the Dear ImGui example app"      ${PROJECT_IS_TOP_LEVEL})
 option(TPZ_BUILD_TESTS        "Build unit tests (GoogleTest)"         ${PROJECT_IS_TOP_LEVEL})
 option(TPZ_BUILD_BENCH        "Build benchmarks (Google Benchmark)"   ${PROJECT_IS_TOP_LEVEL})
-option(TPZ_ENABLE_SANITIZERS  "Enable ASan/UBSan (GCC/Clang, Debug)"  OFF)
+option(TPZ_ENABLE_SANITIZERS  "Enable ASan (+UBSan on GCC/Clang), Debug" OFF)
 option(TPZ_WARNINGS_AS_ERRORS "Treat warnings as errors"              OFF)
 
 # ---------------------------------------------------------------------------
@@ -45,6 +50,21 @@ if(MSVC)
     if(TPZ_WARNINGS_AS_ERRORS)
         target_compile_options(tpz_options INTERFACE /WX)
     endif()
+
+    # MSVC only has ASan (no UBSan). It is incompatible with /RTC runtime
+    # checks, which CMake adds to Debug flags by default, and with incremental
+    # linking. Third-party code is built without ASan, so the STL container
+    # annotations (string, vector, optional, ...) are all disabled to avoid
+    # LNK2038 annotate_* mismatches.
+    if(TPZ_ENABLE_SANITIZERS)
+        string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+        target_compile_options(tpz_options INTERFACE
+            $<$<CONFIG:Debug>:/fsanitize=address>)
+        target_compile_definitions(tpz_options INTERFACE
+            $<$<CONFIG:Debug>:_DISABLE_STL_ANNOTATION>)
+        target_link_options(tpz_options INTERFACE
+            $<$<CONFIG:Debug>:/INCREMENTAL:NO>)
+    endif()
 else()
     target_compile_options(tpz_options INTERFACE
         -Wall -Wextra -Wpedantic -Wshadow -Wconversion)
@@ -59,6 +79,25 @@ else()
             $<$<CONFIG:Debug>:-fsanitize=address,undefined>)
     endif()
 endif()
+
+# MSVC ASan executables need the ASan runtime DLL, which lives next to cl.exe
+# and is only on PATH in a Developer shell. Copy it next to the executable so
+# it runs from any shell (including gtest_discover_tests' post-build run).
+# Call this before gtest_discover_tests so the copy happens first.
+function(tpz_copy_asan_runtime target)
+    if(NOT (MSVC AND TPZ_ENABLE_SANITIZERS))
+        return()
+    endif()
+    cmake_path(GET CMAKE_CXX_COMPILER PARENT_PATH compiler_dir)
+    foreach(dll IN ITEMS clang_rt.asan_dynamic-x86_64.dll clang_rt.asan_dbg_dynamic-x86_64.dll)
+        if(EXISTS "${compiler_dir}/${dll}")
+            add_custom_command(TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${compiler_dir}/${dll}" "$<TARGET_FILE_DIR:${target}>"
+                VERBATIM)
+        endif()
+    endforeach()
+endfunction()
 
 # ---------------------------------------------------------------------------
 # Library: topaz (tpz::eng, tpz::dsa, tpz::net)

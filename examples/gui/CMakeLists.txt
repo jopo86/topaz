@@ -62,6 +62,8 @@ target_link_libraries(tpz_gui
         imgui
 )
 
+tpz_copy_asan_runtime(tpz_gui)
+
 if(APPLE)
     target_compile_definitions(tpz_gui PRIVATE GL_SILENCE_DEPRECATION)
 endif()

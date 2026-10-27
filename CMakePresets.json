@@ -25,6 +25,12 @@
       "configurePreset": "release",
       "configuration": "Release",
       "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "debug-asan",
+      "configurePreset": "debug-asan",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
     }
   ],
   "workflowPresets": [
@@ -34,6 +40,14 @@
         { "type": "configure", "name": "release" },
         { "type": "build", "name": "release" },
         { "type": "test", "name": "release" }
+      ]
+    },
+    {
+      "name": "test-asan",
+      "steps": [
+        { "type": "configure", "name": "debug-asan" },
+        { "type": "build", "name": "debug-asan" },
+        { "type": "test", "name": "debug-asan" }
       ]
     }
   ]

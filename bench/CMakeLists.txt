@@ -30,3 +30,4 @@ target_link_libraries(tpz_bench
         tpz_options
         benchmark::benchmark_main
 )
+tpz_copy_asan_runtime(tpz_bench)

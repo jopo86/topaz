@@ -27,4 +27,6 @@ target_link_libraries(tpz_tests
         GTest::gtest_main
 )
 
+tpz_copy_asan_runtime(tpz_tests)
+
 gtest_discover_tests(tpz_tests)
