@@ -2,8 +2,6 @@
 
 namespace tpz::net {
 
-int placeholder() noexcept {
-    return 0;
-}
+int placeholder() noexcept { return 0; }
 
 } // namespace tpz::net

@@ -1,0 +1,2 @@
+### `List`: raw vs unique pointer
+If everything is `std::unique_ptr`, there are two owners to everything in a doubly-linked list: the previous node's `next` and the next node's `prev`, resulting in double-free errors. Could either choose a direction of owning, or use all raw pointers with explicit memory management. By rule of zero, chose a direction of owning: `head` and `next` are `unique_ptr`, `tail` and `prev` are raw.
