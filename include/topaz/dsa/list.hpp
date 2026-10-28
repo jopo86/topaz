@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <iterator>
-#include <optional>
 #include <memory>
 #include <utility>
 
@@ -29,15 +28,16 @@ private:
 public:
   List() noexcept : head_(nullptr), tail_(nullptr), size_(0) {}
 
-  // TODO: must work for range-for and <algorithm>
   struct Iterator {
     // mandatory C++20/23 public type aliases
-    using iterator_category = std::forward_iterator_tag;
+    using iterator_category = std::bidirectional_iterator_tag;
+    using iterator_concept  = std::bidirectional_iterator_tag;
     using difference_type   = std::ptrdiff_t;
-    using value_type        = Node<T>;
-    using pointer           = Node<T>*;
-    using reference         = Node<T>&;
+    using value_type        = T;
+    using pointer           = T*;
+    using reference         = T&;
 
+    Node<T>* node_;
     pointer ptr_;
 
     reference operator*() const { return *ptr_; }
@@ -45,7 +45,8 @@ public:
 
     // prefix increment (++it)
     Iterator& operator++() {
-      ptr_ = ptr_->next_.get();
+      node_ = node_->next_.get();
+      ptr_ = node_ == nullptr ? nullptr : &node_->val_;
       return *this;
     }
 
@@ -58,7 +59,8 @@ public:
 
     // prefix decrement (--it)
     Iterator& operator--() {
-      ptr_ = ptr_->prev_;
+      node_ = node_->prev_;
+      ptr_ = node_ == nullptr ? nullptr : &node_->val_;
       return *this;
     }
 
@@ -69,20 +71,24 @@ public:
       return tmp;
     }
 
-    friend bool operator==(const Iterator& lhs, const Iterator& rhs) { return lhs.ptr_ == rhs.ptr_; }
-    friend bool operator!=(const Iterator& lhs, const Iterator& rhs) { return lhs.ptr_ != rhs.ptr_; }
+    friend bool operator==(const Iterator& lhs, const Iterator& rhs) { 
+      return lhs.ptr_ == rhs.ptr_ && lhs.node_ == rhs.node_;
+    }
+    friend bool operator!=(const Iterator& lhs, const Iterator& rhs) { 
+      return lhs.ptr_ != rhs.ptr_ && lhs.node_ != rhs.node_;
+    }
   };
 
-  Iterator begin() { return Iterator{head_.get()}; }
-  Iterator end() { return Iterator{nullptr}; }
+  Iterator begin() { return Iterator{ head_.get(), head_ == nullptr ? nullptr : &head_->val_ }; }
+  Iterator end() { return Iterator{ nullptr, nullptr }; }
 
   void push_front(const T& val) noexcept {
     if (size_ == 0) {
-      head_ = std::make_unique<Node>(val);
+      head_ = std::make_unique<Node<T>>(val);
       tail_ = head_.get();
     }
     else {
-      std::unique_ptr<Node<T>> new_head = std::make_unique<Node>(val, nullptr, head_);
+      std::unique_ptr<Node<T>> new_head = std::make_unique<Node<T>>(val, nullptr, head_.get());
       head_->prev_ = new_head.get();
       head_ = std::move(new_head);
     }
@@ -117,25 +123,24 @@ public:
     assert(!empty());
     Node<T>* new_tail = tail_->prev_;
     tail_ = new_tail;
-    if (tail_ != nullptr) tail_->next = nullptr;
+    if (tail_ != nullptr) tail_->next_ = nullptr;
 
     size_--;
   }
 
-  void erase(Iterator it) {
+  Iterator erase(Iterator it) {
     assert(!empty());
-    it;
-    // TODO
+    return it; // TODO
   }
 
-  std::optional<const T&> front() const noexcept {
-    if (head_ != nullptr) return *head_;
-    else return std::nullopt;
+  const T& front() const noexcept {
+    assert(!empty());
+    return head_->val_;
   }
 
-  std::optional<const T&> back() const noexcept {
-    if (tail_ != nullptr) return *tail_;
-    else return std::nullopt;
+  const T& back() const noexcept {
+    assert(!empty());
+    return tail_->val_;
   }
 
   std::size_t size() const noexcept { return size_; }
