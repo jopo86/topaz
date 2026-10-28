@@ -1,5 +1,7 @@
 #pragma once
 
+#include "assert.hpp"
+
 #include <cstddef>
 #include <cassert>
 #include <iterator>
@@ -76,7 +78,7 @@ public:
       return lhs.ptr_ == rhs.ptr_ && lhs.node_ == rhs.node_;
     }
     friend bool operator!=(const Iterator& lhs, const Iterator& rhs) { 
-      return lhs.ptr_ != rhs.ptr_ && lhs.node_ != rhs.node_;
+      return lhs.ptr_ != rhs.ptr_ || lhs.node_ != rhs.node_;
     }
   };
 
@@ -112,7 +114,7 @@ public:
   }
 
   void pop_front() {
-    assert(!empty());
+    TPZ_ASSERT(head_ != nullptr);
 
     head_ = std::move(head_->next_);
     if (head_) head_->prev_ = nullptr;
@@ -121,7 +123,7 @@ public:
   }
   
   void pop_back() {
-    assert(!empty());
+    TPZ_ASSERT(head_ != nullptr);
 
     Node<T>* new_tail = tail_->prev_;
     tail_ = new_tail;
@@ -131,7 +133,8 @@ public:
   }
 
   Iterator erase(Iterator it) {
-    assert(!empty());
+    TPZ_ASSERT(head_ != nullptr);
+
     return --it; // TODO
   }
 
