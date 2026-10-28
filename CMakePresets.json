@@ -2,36 +2,71 @@
   "version": 6,
   "configurePresets": [
     {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
       "name": "release",
-      "binaryDir": "build",
+      "inherits": "base",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     },
     {
       "name": "debug-asan",
-      "binaryDir": "build-debug",
+      "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "TPZ_ENABLE_SANITIZERS": "ON"
       }
+    },
+    {
+      "name": "msvc-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "msvc",
+      "inherits": "msvc-base"
+    },
+    {
+      "name": "msvc-asan",
+      "inherits": "msvc-base",
+      "cacheVariables": { "TPZ_ENABLE_SANITIZERS": "ON" }
     }
   ],
   "buildPresets": [
-    { "name": "release", "configurePreset": "release", "configuration": "Release" },
-    { "name": "debug-asan", "configurePreset": "debug-asan", "configuration": "Debug" }
+    { "name": "release", "configurePreset": "release" },
+    { "name": "debug-asan", "configurePreset": "debug-asan" },
+    {
+      "name": "msvc-base",
+      "hidden": true,
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    { "name": "msvc", "inherits": "msvc-base", "configurePreset": "msvc", "configuration": "Release" },
+    { "name": "msvc-asan", "inherits": "msvc-base", "configurePreset": "msvc-asan", "configuration": "Debug" }
   ],
   "testPresets": [
     {
-      "name": "release",
-      "configurePreset": "release",
-      "configuration": "Release",
+      "name": "base",
+      "hidden": true,
       "output": { "outputOnFailure": true }
     },
+    { "name": "release", "inherits": "base", "configurePreset": "release" },
+    { "name": "debug-asan", "inherits": "base", "configurePreset": "debug-asan" },
     {
-      "name": "debug-asan",
-      "configurePreset": "debug-asan",
-      "configuration": "Debug",
-      "output": { "outputOnFailure": true }
-    }
+      "name": "msvc-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    { "name": "msvc", "inherits": "msvc-base", "configurePreset": "msvc", "configuration": "Release" },
+    { "name": "msvc-asan", "inherits": "msvc-base", "configurePreset": "msvc-asan", "configuration": "Debug" }
   ],
   "workflowPresets": [
     {
@@ -48,6 +83,22 @@
         { "type": "configure", "name": "debug-asan" },
         { "type": "build", "name": "debug-asan" },
         { "type": "test", "name": "debug-asan" }
+      ]
+    },
+    {
+      "name": "test-msvc",
+      "steps": [
+        { "type": "configure", "name": "msvc" },
+        { "type": "build", "name": "msvc" },
+        { "type": "test", "name": "msvc" }
+      ]
+    },
+    {
+      "name": "test-msvc-asan",
+      "steps": [
+        { "type": "configure", "name": "msvc-asan" },
+        { "type": "build", "name": "msvc-asan" },
+        { "type": "test", "name": "msvc-asan" }
       ]
     }
   ]
