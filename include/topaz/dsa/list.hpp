@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cassert>
 #include <iterator>
 #include <memory>
 #include <utility>
@@ -14,8 +15,8 @@ public:
   Node<T>* prev_;
   std::unique_ptr<Node<T>> next_;
 
-  Node(T val, Node<T>* prev = nullptr, Node<T>* next = nullptr) 
-    : val_(val), prev_(prev), next_(next) {}
+  Node(T val, Node<T>* prev = nullptr, std::unique_ptr<Node<T>> next = nullptr) 
+    : val_(val), prev_(prev), next_(std::move(next)) {}
 };
 
 template<class T>
@@ -46,7 +47,7 @@ public:
     // prefix increment (++it)
     Iterator& operator++() {
       node_ = node_->next_.get();
-      ptr_ = node_ == nullptr ? nullptr : &node_->val_;
+      ptr_ = !node_ ? nullptr : &node_->val_;
       return *this;
     }
 
@@ -60,7 +61,7 @@ public:
     // prefix decrement (--it)
     Iterator& operator--() {
       node_ = node_->prev_;
-      ptr_ = node_ == nullptr ? nullptr : &node_->val_;
+      ptr_ = !node_ ? nullptr : &node_->val_;
       return *this;
     }
 
@@ -79,7 +80,7 @@ public:
     }
   };
 
-  Iterator begin() { return Iterator{ head_.get(), head_ == nullptr ? nullptr : &head_->val_ }; }
+  Iterator begin() { return Iterator{ head_.get(), !head_ ? nullptr : &head_->val_ }; }
   Iterator end() { return Iterator{ nullptr, nullptr }; }
 
   void push_front(const T& val) noexcept {
@@ -88,7 +89,7 @@ public:
       tail_ = head_.get();
     }
     else {
-      std::unique_ptr<Node<T>> new_head = std::make_unique<Node<T>>(val, nullptr, head_.get());
+      std::unique_ptr<Node<T>> new_head = std::make_unique<Node<T>>(val, nullptr, std::move(head_));
       head_->prev_ = new_head.get();
       head_ = std::move(new_head);
     }
@@ -98,8 +99,8 @@ public:
 
   void push_back(const T& val) noexcept {
     if (size_ == 0) {
-      tail_ = new Node(val);
-      head_ = std::unique_ptr<Node<T>>(tail_);
+      head_ = std::make_unique<Node<T>>(val);
+      tail_ = head_.get();
     }
     else {
       Node<T>* new_tail = new Node<T>(val, tail_, nullptr);
@@ -112,25 +113,26 @@ public:
 
   void pop_front() {
     assert(!empty());
-    std::unique_ptr<Node<T>> new_head = std::move(head_->next_);
-    head_ = std::move(new_head);
-    if (head_ != nullptr) head_->prev_ = nullptr;
+
+    head_ = std::move(head_->next_);
+    if (head_) head_->prev_ = nullptr;
 
     size_--;
   }
   
   void pop_back() {
     assert(!empty());
+
     Node<T>* new_tail = tail_->prev_;
     tail_ = new_tail;
-    if (tail_ != nullptr) tail_->next_ = nullptr;
+    if (tail_) tail_->next_ = nullptr;
 
     size_--;
   }
 
   Iterator erase(Iterator it) {
     assert(!empty());
-    return it; // TODO
+    return --it; // TODO
   }
 
   const T& front() const noexcept {
