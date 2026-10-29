@@ -166,6 +166,7 @@ target_sources(topaz
     FILE_SET HEADERS
     BASE_DIRS include
     FILES
+      include/topaz/assert.hpp
       include/topaz/engine/placeholder.hpp
       include/topaz/dsa/placeholder.hpp
       include/topaz/dsa/list.hpp
