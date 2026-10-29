@@ -218,6 +218,34 @@ TEST(ListTest, ReusableAfterPopBackToEmpty) {
 }
 
 // ---------------------------------------------------------------------------
+// front / back
+// ---------------------------------------------------------------------------
+
+TEST(ListTest, FrontAndBackAreAssignable) {
+  List<int> list = make_list({ 1, 2, 3 });
+  list.front() = 10;
+  list.back() = 30;
+  EXPECT_TRUE(has_contents(list, { 10, 2, 30 }));
+}
+
+// With one element, front() and back() must refer to the same value, not two copies.
+TEST(ListTest, FrontAndBackAliasSingleElement) {
+  List<int> list = make_list({ 1 });
+  list.front() = 5;
+  EXPECT_EQ(list.back(), 5);
+  EXPECT_EQ(&list.front(), &list.back());
+}
+
+TEST(ListTest, ConstFrontAndBackAreReadOnly) {
+  List<int> list = make_list({ 1, 2, 3 });
+  const List<int>& view = list;
+  static_assert(std::is_same_v<decltype(view.front()), const int&>);
+  static_assert(std::is_same_v<decltype(view.back()), const int&>);
+  EXPECT_EQ(view.front(), 1);
+  EXPECT_EQ(view.back(), 3);
+}
+
+// ---------------------------------------------------------------------------
 // Iteration
 // ---------------------------------------------------------------------------
 

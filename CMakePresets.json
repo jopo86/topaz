@@ -21,7 +21,8 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "TPZ_ENABLE_SANITIZERS": "ON"
+        "TPZ_ENABLE_SANITIZERS": "ON",
+        "TPZ_WARNINGS_AS_ERRORS": "ON"
       }
     },
     {

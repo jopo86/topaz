@@ -3,7 +3,6 @@
 #include "../assert.hpp"
 
 #include <cstddef>
-#include <cassert>
 #include <iterator>
 #include <memory>
 #include <utility>
@@ -19,8 +18,31 @@ public:
   Node<T>* prev_;
   std::unique_ptr<Node<T>> next_;
 
-  Node(T val, Node<T>* prev = nullptr, std::unique_ptr<Node<T>> next = nullptr) 
-    : val_(val), prev_(prev), next_(std::move(next)) {}
+  /// @brief Creates a node holding @p val, linked between @p prev and @p next.
+  /// @param val Value to store.
+  /// @param prev Previous node (not owned), or nullptr if this is the first node.
+  /// @param next Next node, whose ownership passes to this node; nullptr if this is the last node.
+  Node(T val, Node<T>* prev = nullptr, std::unique_ptr<Node<T>> next = nullptr)
+    : val_(std::move(val)), prev_(prev), next_(std::move(next)) {}
+
+  /// @brief Not copyable: a node uniquely owns the rest of the chain.
+  Node(const Node& other) = delete;
+
+  /// @brief Takes over @p other's links and copies its value.
+  /// @note @p other keeps its @c prev_ pointer, but its @c next_ becomes null.
+  Node(Node&& other) noexcept : val_(std::move(other.val_)), prev_(other.prev_), next_(std::move(other.next_)) {}
+
+  /// @brief Not copyable: a node uniquely owns the rest of the chain.
+  Node& operator=(const Node& other) = delete;
+
+  /// @brief Takes over @p other's links and copies its value, freeing this node's old successor.
+  /// @note @p other keeps its @c prev_ pointer, but its @c next_ becomes null.
+  Node& operator=(Node&& other) noexcept {
+    val_ = other.val_;
+    prev_ = other.prev_;
+    next_ = std::move(other.next_);
+    return *this;
+  }
 };
 
 /// @brief Doubly linked, non-intrusive list.
@@ -42,20 +64,28 @@ public:
   /// @brief Creates an empty list. Does not allocate.
   List() noexcept : head_(nullptr), tail_(nullptr), size_(0) {}
 
+  /// @brief Not copyable.
   List(const List& other) = delete;
 
-  List(List&& other) noexcept {
-    head_ = std::move(other.head_);
-    tail_ = other.tail_;
-    size_ = other.size_;
-  }
+  /// @brief Takes over @p other's elements. @p other is left empty.
+  /// @note O(1). Does not allocate, copy, or destroy any elements. Iterators into @p other stay
+  ///       valid and now refer to elements of this list.
+  List(List&& other) noexcept
+  : head_(std::move(other.head_)), tail_(std::exchange(other.tail_, nullptr)), size_(std::exchange(other.size_, 0)) {}
 
+  /// @brief Not copyable.
   List& operator=(const List& other) = delete;
 
+  /// @brief Destroys this list's elements, then takes over @p other's. @p other is left empty.
+  /// @return `*this`.
+  /// @note O(n) in this list's old size, O(1) in @p other's size. Invalidates all iterators into
+  ///       this list. Iterators into @p other stay valid and now refer to elements of this list.
   List& operator=(List&& other) noexcept {
+    clear();
     head_ = std::move(other.head_);
-    tail_ = other.tail_;
-    size_ = other.size_;
+    tail_ = std::exchange(other.tail_, nullptr);
+    size_ = std::exchange(other.size_, 0);
+    return *this;
   }
 
   /// @brief Bidirectional iterator over the list's elements.
@@ -75,40 +105,62 @@ public:
     Node<T>* node_;
     pointer ptr_;
 
+    /// @brief Returns the element this iterator refers to.
+    /// @pre The iterator is not end().
     reference operator*() const { return *ptr_; }
-    pointer operator->() { return ptr_; }
 
-    // prefix increment (++it)
+    /// @brief Accesses a member of the element this iterator refers to.
+    /// @pre The iterator is not end().
+    pointer operator->() const { return ptr_; }
+
+    /// @brief Advances to the next element (`++it`).
+    /// @return `*this`, now referring to the next element, or end() if this was the last.
+    /// @pre The iterator is not end().
     Iterator& operator++() {
+      TPZ_ASSERT(node_ != nullptr);
+
       node_ = node_->next_.get();
       ptr_ = !node_ ? nullptr : &node_->val_;
       return *this;
     }
 
-    // postfix increment (it++)
+    /// @brief Advances to the next element (`it++`).
+    /// @return A copy of the iterator from before it advanced.
+    /// @pre The iterator is not end().
     Iterator operator++(int) {
       Iterator tmp = *this;
       ++(*this);
       return tmp;
     }
 
-    // prefix decrement (--it)
+    /// @brief Moves back to the previous element (`--it`).
+    /// @return `*this`, now referring to the previous element.
+    /// @pre The iterator is not end() and not begin().
+    /// @note Unlike std::list, decrementing end() is not supported, because end() does not know
+    ///       which list it belongs to.
     Iterator& operator--() {
+      TPZ_ASSERT(node_ != nullptr);
+
       node_ = node_->prev_;
       ptr_ = !node_ ? nullptr : &node_->val_;
       return *this;
     }
 
-    // postfix decrement (it--)
+    /// @brief Moves back to the previous element (`it--`).
+    /// @return A copy of the iterator from before it moved.
+    /// @pre The iterator is not end() and not begin().
     Iterator operator--(int) {
       Iterator tmp = *this;
       --(*this);
       return tmp;
     }
 
-    friend bool operator==(const Iterator& lhs, const Iterator& rhs) { 
+    /// @brief Returns whether both iterators refer to the same element, or are both end().
+    friend bool operator==(const Iterator& lhs, const Iterator& rhs) {
       return lhs.ptr_ == rhs.ptr_ && lhs.node_ == rhs.node_;
     }
+
+    /// @brief Returns whether the iterators refer to different elements.
     friend bool operator!=(const Iterator& lhs, const Iterator& rhs) { 
       return lhs.ptr_ != rhs.ptr_ || lhs.node_ != rhs.node_;
     }
@@ -205,43 +257,70 @@ public:
 
     Iterator next_it;
 
-    if (size_ == 1) {
-      head_.reset(nullptr);
-      tail_ = nullptr;
-      next_it = end();
-    }
-    else if (it == begin()) {
-      pop_front();
+    if (size_ == 1 || it.node_ == head_.get()) {
+      pop_front(); // this executes size_--
       next_it = begin();
     }
     else if (it.node_ == tail_) {
-      pop_back();
+      pop_back(); // this executes size_--
       next_it = end();
     }
     else {
       next_it = Iterator { it.node_->next_.get(), &it.node_->next_->val_ };
       it.node_->next_->prev_ = it.node_->prev_;
       it.node_->prev_->next_ = std::move(it.node_->next_);
+      size_--;
     }
 
-    size_--;
     return next_it;
   }
 
-  /// @brief Returns the first element.
-  /// @return Reference to the first element.
+  /// @brief Returns the first element, read-only.
+  /// @return Const reference to the first element.
   /// @pre `!empty()`
   const T& front() const {
-    assert(!empty());
+    TPZ_ASSERT(size_ != 0);
     return head_->val_;
   }
 
-  /// @brief Returns the last element.
-  /// @return Reference to the last element.
+  /// @brief Returns the first element.
+  /// @return Mutable reference to the first element, valid until that element is removed.
+  /// @pre `!empty()`
+  T& front() {
+    TPZ_ASSERT(size_ != 0);
+    return head_->val_;
+  }
+
+  /// @brief Returns the last element, read-only.
+  /// @return Const reference to the last element.
   /// @pre `!empty()`
   const T& back() const {
-    assert(!empty());
+    TPZ_ASSERT(size_ != 0);
     return tail_->val_;
+  }
+
+  /// @brief Returns the last element.
+  /// @return Mutable reference to the last element, valid until that element is removed.
+  /// @pre `!empty()`
+  T& back() {
+    TPZ_ASSERT(size_ != 0);
+    return tail_->val_;
+  }
+
+  /// @brief Removes and destroys every element. The list is empty afterwards and can be reused.
+  /// @note O(n). Iterative, so a very long list does not overflow the stack. Invalidates all
+  ///       iterators except end().
+  void clear() {
+    if (size_ == 0) return;
+
+    Node<T>* p = tail_->prev_;
+    while (p) {
+      p->next_ = nullptr;
+      p = p->prev_;
+    }
+    head_ = nullptr;
+    tail_ = nullptr;
+    size_ = 0;
   }
 
   /// @brief Returns the number of elements. O(1).
@@ -250,7 +329,10 @@ public:
   /// @brief Returns whether the list has no elements. O(1).
   bool empty() const noexcept { return size_ == 0; }
 
-  ~List() noexcept {}
+  /// @brief Destroys every element exactly once. Iterative; see clear().
+  ~List() {
+    clear();
+  }
 };
 
 } // namespace tpz::dsa
