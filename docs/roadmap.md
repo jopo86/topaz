@@ -11,21 +11,21 @@ Check items off as you go (`- [x]`). Add notes inline when something surprised y
 Goal: be able to explain what an exchange does and what an order book is to someone else.
 
 **Learn**
-- [ ] What an exchange is: a venue that matches buyers and sellers of an *instrument* (a stock, future, etc.)
-- [ ] **Bid** (price someone will buy at) vs **ask/offer** (price someone will sell at)
-- [ ] **Best bid / best ask** ("top of book"), the **spread** (ask − bid), and the **mid price**
-- [ ] **Limit order**: buy/sell up to N units at price P or better. It rests in the book if it can't trade right away.
-- [ ] **Market order**: trade N units right now at whatever prices are available
-- [ ] **Crossing the spread**: a buy priced ≥ best ask (or a sell ≤ best bid) trades immediately
-- [ ] **Maker** (adds resting liquidity) vs **taker** (removes it by trading against resting orders)
-- [ ] **Fill** vs **partial fill**; what happens to the leftover quantity
-- [ ] **Price-time priority (FIFO)**: better price matches first, and at equal prices the earlier order matches first
-- [ ] **Tick size** (minimum price increment) and **lot size** (minimum quantity increment). This is why prices are integers here.
-- [ ] Market data levels: **L1** (top of book), **L2** (total quantity per price level), **L3** (every individual order)
-- [ ] Read through a few real order book screenshots/visualizations and narrate what happens when a new order arrives
+- [X] What an exchange is: a venue that matches buyers and sellers of an *instrument* (a stock, future, etc.)
+- [X] **Bid** (price someone will buy at) vs **ask/offer** (price someone will sell at)
+- [X] **Best bid / best ask** ("top of book"), the **spread** (ask − bid), and the **mid price**
+- [X] **Limit order**: buy/sell up to N units at price P or better. It rests in the book if it can't trade right away.
+- [X] **Market order**: trade N units right now at whatever prices are available
+- [X] **Crossing the spread**: a buy priced ≥ best ask (or a sell ≤ best bid) trades immediately
+- [X] **Maker** (adds resting liquidity) vs **taker** (removes it by trading against resting orders)
+- [X] **Fill** vs **partial fill**; what happens to the leftover quantity
+- [X] **Price-time priority (FIFO)**: better price matches first, and at equal prices the earlier order matches first
+- [X] **Tick size** (minimum price increment) and **lot size** (minimum quantity increment). This is why prices are integers here.
+- [X] Market data levels: **L1** (top of book), **L2** (total quantity per price level), **L3** (every individual order)
+- [X] Read through a few real order book screenshots/visualizations and narrate what happens when a new order arrives
 
 **Check yourself**
-- [ ] On paper: given a book and an incoming order, write down every trade it produces and what the book looks like afterward. Do this for a buy that partially fills across 3 price levels.
+- [X] On paper: given a book and an incoming order, write down every trade it produces and what the book looks like afterward. Do this for a buy that partially fills across 3 price levels.
 
 **Resources**
 - Larry Harris, *Trading and Exchanges* (chapters on orders and order books; the rest is optional)
@@ -39,12 +39,12 @@ Goal: be able to explain what an exchange does and what an order book is to some
 Goal: a simple order book using standard containers that matches limit orders correctly.
 
 **Learn**
-- [ ] Fixed-point prices: storing `$101.25` with tick `0.01` as the integer `10125`, and why floats are wrong for money
-- [ ] Why the engine *emits events* instead of returning results or printing (see CLAUDE.md: separation of concerns)
-- [ ] Determinism: why the same inputs must always produce the same outputs (replay, debugging, auditing)
+- [X] Fixed-point prices: storing `$101.25` with tick `0.01` as the integer `10125`, and why floats are wrong for money
+- [X] Why the engine *emits events* instead of returning results or printing (see CLAUDE.md: separation of concerns)
+- [X] Determinism: why the same inputs must always produce the same outputs (replay, debugging, auditing)
 
 **Build**
-- [ ] Decide where shared types (`Price`, `Qty`, `OrderId`, `Side`) live, and resolve the "Confirm" note in CLAUDE.md
+- [X] Decide where shared types (`Price`, `Qty`, `OrderId`, `Side`) live, and resolve the "Confirm" note in CLAUDE.md
 - [ ] Strong types for price/qty/id (so you can't pass a `Qty` where a `Price` is expected)
 - [ ] `Order` struct: id, side, price, quantity remaining
 - [ ] Naive book: e.g. `std::map<Price, std::list<Order>>` per side (think about which way each side should sort)

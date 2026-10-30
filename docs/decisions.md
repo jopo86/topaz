@@ -20,3 +20,37 @@
 
 **Alternatives considered:**
 - *Recursive (default) destruction*: no code needed, but stack depth grows with the list length. `LongListDestroysWithoutStackOverflow` tests that we avoid this.
+
+## Core Shared Types
+
+### Shared types live in `tpz`, in `topaz/types.hpp` (2026-10-30)
+
+**Decision:** `Price`, `Qty`, `OrderId`, `Side`, and the request types live directly in namespace `tpz`, in `include/topaz/types.hpp`.
+
+**Reasoning:** These types are the vocabulary of the whole system, not engine internals. `tpz::net` needs them to encode and decode order entry and market data messages, and the GUI needs them to display and submit orders. Keeping them out of `tpz::eng` means neither has to depend on the engine just to name a price.
+
+**Alternatives considered:**
+- *`tpz::eng` in `topaz/engine/types.hpp`*: also workable, since `net` depending on `eng` is the allowed direction. Rejected because anything that needs a `Price` would then depend on the engine.
+- *`defs.hpp` / `common.hpp`*: vague names like these tend to collect unrelated macros and helpers over time. Headers are named after what they contain, like `assert.hpp`.
+
+### `StrongInt` has an `explicit` constructor (2026-10-30)
+
+**Decision:** `StrongInt`'s constructor from `Rep` is `explicit`, so raw integers don't convert implicitly to `Price`, `Qty`, or `OrderId`.
+
+**Reasoning:** The point of strong types is to make mix-ups fail to compile. With an implicit constructor, a `Price` still can't be passed as a `Qty`, but raw integers convert to any strong type, so `NewLimit{1, Side::Bid, 100, 10125}` with price and qty swapped would compile. With `explicit`, every value is labeled at the call site: `NewLimit{OrderId{1}, Side::Bid, Price{10125}, Qty{100}}`.
+
+**Alternatives considered:**
+- *Implicit constructor*: shorter tests and call sites, but swapped integer literals compile without complaint. Rejected because that's exactly the kind of bug these types exist to catch.
+
+### Requests are a `std::variant`; the book stores `RestingOrder` (2026-10-30)
+
+**Decision:** Incoming requests are `Request = std::variant<NewLimit, NewMarket, Cancel>`. The book stores a single concrete type, `RestingOrder`.
+
+**Reasoning:** The set of request types is small and closed, which is what `std::variant` is for. `std::visit` doesn't compile if a case is unhandled, so adding a request type (e.g. modify) makes the compiler point out every place that needs updating. Alternatives are stored inline (size of the largest alternative plus a discriminant), so there's no per-request heap allocation or virtual dispatch. That should be fast, but it hasn't been measured yet.
+
+Only limit orders ever rest, because a market order trades immediately and any unfilled remainder is cancelled. So the variant is only for input. If the book stored a variant, every read of a resting order would have to visit something that can only be one type.
+
+**Alternatives considered:**
+- *Inheritance* (`NewLimit`, `NewMarket` derive from a base `Request`): suits an open, extensible set of types. Here it would put every request behind a pointer, which means a heap allocation per request plus virtual dispatch, all for a set of types we know in advance.
+- *One struct with an order-type enum* (like FIX's `OrdType`, with `price` ignored for market orders): simple and fixed-size, but it allows invalid states like a market order with a price, and nothing forces every type to be handled.
+- *Variant for stored orders too* (`Order = std::variant<MarketOrder, LimitOrder>` in the book): rejected because market orders never rest; see above.

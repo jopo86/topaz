@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../assert.hpp"
+#include "../defs.hpp"
 
 #include <cstddef>
 #include <iterator>

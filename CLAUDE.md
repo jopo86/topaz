@@ -103,7 +103,7 @@ CMake options (all prefixed `TPZ_`): `TPZ_BUILD_TESTS`, `TPZ_BUILD_BENCH`, `TPZ_
 
 ### Namespaces and includes
 
-- Namespaces are abbreviated: `tpz::eng`, `tpz::dsa`, `tpz::net`. <!-- Confirm: shared core types (Price, Qty, OrderId) live directly in `tpz`. -->
+- Namespaces are abbreviated: `tpz::eng`, `tpz::dsa`, `tpz::net`.
 - Include paths use full names: `#include <topaz/engine/order_book.hpp>`. This mismatch with the namespaces is intentional; don't rename one to match the other.
 - No `using namespace` in headers.
 
