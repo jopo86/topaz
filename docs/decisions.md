@@ -54,3 +54,18 @@ Only limit orders ever rest, because a market order trades immediately and any u
 - *Inheritance* (`NewLimit`, `NewMarket` derive from a base `Request`): suits an open, extensible set of types. Here it would put every request behind a pointer, which means a heap allocation per request plus virtual dispatch, all for a set of types we know in advance.
 - *One struct with an order-type enum* (like FIX's `OrdType`, with `price` ignored for market orders): simple and fixed-size, but it allows invalid states like a market order with a price, and nothing forces every type to be handled.
 - *Variant for stored orders too* (`Order = std::variant<MarketOrder, LimitOrder>` in the book): rejected because market orders never rest; see above.
+
+### Market orders use `MarketTif`, which has no GTC (2026-10-30)
+
+**Decision:** `NewMarket::tif` is a separate `MarketTif` enum with only `ImmediateOrCancel` and `FillOrKill`. `NewLimit` keeps the full `Tif`.
+
+**Reasoning:** A market order has no price, so its remainder can't rest on the book, and market + GTC is meaningless. Making the field's type unable to hold GTC removes that case entirely: the engine has nothing to check, assert, or reject, and matching code can't forget to handle it. It's the same reasoning as rejecting the single-struct request in favour of a variant.
+
+The wire decoder still has to reject a GTC value in a market order message, but that's ordinary input validation it already does for any out-of-range field.
+
+`MarketTif` and `Tif` share value names but not underlying values, so code that needs one TIF type converts with a `switch`, not a cast.
+
+**Alternatives considered:**
+- *Precondition + `TPZ_ASSERT`*: makes the engine's contract explicit, but `TPZ_ASSERT` becomes `[[assume]]` in Release, so a violation is undefined behaviour rather than a crash. Since requests will come from clients over `tpz::net`, this only works if every request source validates first, and nothing in the types enforces that.
+- *Runtime reject in the engine*: safe and cheap (one predictable branch per market order), but it puts input validation into matching code and still leaves an invalid state representable.
+- *Treat market + GTC as IOC*: silently changes what the client asked for. Rejected because it hides client bugs.

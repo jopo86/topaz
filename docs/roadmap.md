@@ -45,8 +45,8 @@ Goal: a simple order book using standard containers that matches limit orders co
 
 **Build**
 - [X] Decide where shared types (`Price`, `Qty`, `OrderId`, `Side`) live, and resolve the "Confirm" note in CLAUDE.md
-- [ ] Strong types for price/qty/id (so you can't pass a `Qty` where a `Price` is expected)
-- [ ] `Order` struct: id, side, price, quantity remaining
+- [X] Strong types for price/qty/id (so you can't pass a `Qty` where a `Price` is expected)
+- [X] `Order` struct: id, side, price, quantity remaining
 - [ ] Naive book: e.g. `std::map<Price, std::list<Order>>` per side (think about which way each side should sort)
 - [ ] `add_limit`: match against the opposite side while it crosses, then rest the remainder
 - [ ] `cancel(id)`: needs a way to find an order by id (what's the complexity of your first attempt?)
