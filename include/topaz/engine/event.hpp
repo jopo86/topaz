@@ -27,4 +27,10 @@ struct Rejected {
 
 using Event = std::variant<Accepted, Filled, Cancelled, Rejected>;
 
+template<typename S>
+concept EventSink = requires (S& s, const Accepted& a, const Filled& f,
+                              const Cancelled& c, const Rejected& r) {
+  s.on(a); s.on(f); s.on(c); s.on(r);
+};
+
 } // namespace tpz::eng

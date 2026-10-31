@@ -29,6 +29,17 @@ public:
   /// @brief Wraps the raw integer @p val.
   constexpr explicit StrongInt(Rep val) : val_(val) {}
 
+    /// @brief Adds @p rhs to the underlying value.
+  constexpr StrongInt& operator+=(StrongInt rhs) { val_ += rhs.val_; return *this; }
+  /// @brief Subtracts @p rhs from the underlying value.
+  constexpr StrongInt& operator-=(StrongInt rhs) { val_ -= rhs.val_; return *this; }
+
+  /// @brief Sum of the underlying values.
+  friend constexpr StrongInt operator+(StrongInt lhs, StrongInt rhs) { return lhs += rhs; }
+  /// @brief Difference of the underlying values.
+  friend constexpr StrongInt operator-(StrongInt lhs, StrongInt rhs) { return lhs -= rhs; }
+
+
   /// @brief Returns the underlying integer.
   [[nodiscard]] constexpr Rep val() const { return val_; }
 
